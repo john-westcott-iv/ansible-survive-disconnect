@@ -1,0 +1,35 @@
+# Perform our sample file check
+- name: Check for the file
+  file:
+    path: "/tmp/john"
+    state: file
+  register: my_file
+  # As long as we are connected, keey tryung until we gound the file
+  until: my_file is succeeded
+  # if the machine is up the retries will keep looping looking for the file pausing for the delay
+  retries: 2
+  delay: 1
+  # This setting will not mark the machine as failed if its unreachable
+  ignore_unreachable: True
+  # We also need to ignore erros incase the file just dosen't exist on the server yet and we run out of retries
+  ignore_errors: True
+
+# If the machine was not available for the last step pause so we don't just cruse through the number of retries
+- name: Sleep if the host was unreachable
+  pause:
+    seconds: 3
+  when: my_file is unreachable
+  delegate_to: localhost
+
+# decrement a saftey counter so we don't end up in an infinite loop
+- set_fact:
+    saftey_counter: "{{ (saftey_counter | default(6) | int) - 1}}"
+
+# Loop if:
+#    we still have saftey reties
+#    didn't get the file or we were unreable to connect
+- include_tasks: run_check_test.yml
+  when:
+    - (saftey_counter | int > 0)
+    - my_file is not succeeded or my_file is unreachable
+

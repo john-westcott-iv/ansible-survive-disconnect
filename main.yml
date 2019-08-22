@@ -1,0 +1,26 @@
+---
+- name: Try to survive and detect a reboot
+  hosts: all
+  gather_facts: False
+
+  tasks:
+    - debug:
+        msg: "Watching for a file"
+
+    # inside the include we will call the same include to perform a loop
+    - include_tasks: run_check_test.yml
+
+    # The my_file variable comes from the include, its a registered variable from a task
+    # Here we are going to force a failure if:
+    #     we didn't get to run for some reason
+    #     we didn't succeed
+    #     we were unable to reach the target
+    - name: Fail if we didn't get the file
+      fail:
+        msg: "It really failed"
+      when: my_file is not defined or my_file is not succeeded or my_file is unreachable
+
+    # Otherwise we can move on to any remaining tasks we have
+    - name: Post task
+      debug:
+        msg: "This is the post task"
